@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>O Chamado de Cthulhu - RPG Narrativo</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="game-shell">
+      <section class="stage" aria-label="Cena animada">
+        <canvas id="sceneCanvas" width="960" height="540"></canvas>
+        <div class="topbar">
+          <div>
+            <p class="kicker">RPG narrativo</p>
+            <h1>O Chamado de Cthulhu</h1>
+          </div>
+          <button id="soundToggle" class="icon-button" type="button" aria-label="Ativar trilha sonora" title="Trilha sonora">
+            <span id="soundIcon">♪</span>
+          </button>
+        </div>
+        <div class="chapter-tag" id="chapterTag">Boston, 1926</div>
+      </section>
+
+      <section class="console" aria-label="Painel do jogo">
+        <aside class="stats-panel" aria-label="Status do investigador">
+          <div class="portrait">
+            <div class="sigil"></div>
+            <div>
+              <span>Investigador</span>
+              <strong id="rankLabel">Executor dos papéis de Angell</strong>
+            </div>
+          </div>
+
+          <div class="meter">
+            <div class="meter-label"><span>Sanidade</span><strong id="sanityValue">70</strong></div>
+            <div class="meter-track"><div id="sanityBar" class="meter-fill sanity"></div></div>
+          </div>
+          <div class="meter">
+            <div class="meter-label"><span>Perigo</span><strong id="dangerValue">15</strong></div>
+            <div class="meter-track"><div id="dangerBar" class="meter-fill danger"></div></div>
+          </div>
+          <div class="meter">
+            <div class="meter-label"><span>Pistas</span><strong id="clueValue">0</strong></div>
+            <div class="meter-track"><div id="clueBar" class="meter-fill clue"></div></div>
+          </div>
+
+          <div class="inventory">
+            <h2>Achados</h2>
+            <ul id="inventoryList"></ul>
+          </div>
+        </aside>
+
+        <article class="story-panel">
+          <div class="story-meta">
+            <span id="actLabel">Ato I</span>
+            <span id="pulseLabel">o ar cheira a papel úmido</span>
+          </div>
+          <h2 id="sceneTitle">A caixa trancada</h2>
+          <p id="sceneText"></p>
+          <div id="choiceList" class="choices"></div>
+        </article>
+      </section>
+    </main>
+
+    <script src="game.js"></script>
+  </body>
+</html>
