@@ -211,7 +211,8 @@ const soundIcon = document.getElementById("soundIcon");
 
 let audioContext;
 let drone;
-let lowOsc;
+let musicTimer;
+let chordStep = 0;
 let tick = 0;
 
 function clamp(value, min, max) {
@@ -563,41 +564,81 @@ function startAudio() {
   if (!audioContext) {
     audioContext = new AudioContext();
     drone = audioContext.createGain();
-    drone.gain.value = 0.035;
+    drone.gain.value = 0;
     drone.connect(audioContext.destination);
-
-    lowOsc = audioContext.createOscillator();
-    lowOsc.type = "sawtooth";
-    lowOsc.frequency.value = 43;
-    lowOsc.connect(drone);
-    lowOsc.start();
-
-    const pulse = audioContext.createOscillator();
-    const pulseGain = audioContext.createGain();
-    pulse.type = "sine";
-    pulse.frequency.value = 86;
-    pulseGain.gain.value = 0.018;
-    pulse.connect(pulseGain);
-    pulseGain.connect(drone);
-    pulse.start();
-
-    setInterval(() => {
-      if (!audioContext || !state.sound) return;
-      const now = audioContext.currentTime;
-      const note = audioContext.createOscillator();
-      const gain = audioContext.createGain();
-      note.type = "triangle";
-      note.frequency.value = [146, 155, 98, 73][Math.floor(Math.random() * 4)];
-      gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.04, now + 0.08);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 1.7);
-      note.connect(gain);
-      gain.connect(audioContext.destination);
-      note.start(now);
-      note.stop(now + 1.8);
-    }, 1700);
   }
   audioContext.resume();
+  scheduleMusic();
+}
+
+function makeVoice(frequency, start, duration, volume, type = "sine", destination = drone) {
+  const osc = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+  const filter = audioContext.createBiquadFilter();
+
+  osc.type = type;
+  osc.frequency.setValueAtTime(frequency, start);
+  filter.type = "lowpass";
+  filter.frequency.setValueAtTime(820, start);
+  filter.Q.setValueAtTime(0.7, start);
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(volume, start + 0.45);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+
+  osc.connect(filter);
+  filter.connect(gain);
+  gain.connect(destination);
+  osc.start(start);
+  osc.stop(start + duration + 0.08);
+}
+
+function makeBell(frequency, start, volume) {
+  const bellGain = audioContext.createGain();
+  const delay = audioContext.createDelay();
+  const feedback = audioContext.createGain();
+
+  delay.delayTime.setValueAtTime(0.42, start);
+  feedback.gain.setValueAtTime(0.22, start);
+  bellGain.connect(delay);
+  delay.connect(feedback);
+  feedback.connect(delay);
+  delay.connect(drone);
+
+  [1, 2.01, 2.97].forEach((partial, index) => {
+    makeVoice(frequency * partial, start + index * 0.015, 2.8, volume / (index + 1.4), "triangle", bellGain);
+  });
+}
+
+function playChord(root, quality, start) {
+  const intervals = quality === "dim" ? [1, 1.189, 1.414] : [1, 1.189, 1.498];
+  makeVoice(root / 2, start, 4.8, 0.045, "sine");
+  intervals.forEach((ratio, index) => {
+    makeVoice(root * ratio, start + index * 0.06, 4.6, 0.024, index === 0 ? "sine" : "triangle");
+  });
+}
+
+function scheduleMusic() {
+  if (musicTimer || !audioContext) return;
+  const progression = [
+    { root: 55.0, quality: "min", melody: 220.0 },
+    { root: 51.91, quality: "min", melody: 207.65 },
+    { root: 46.25, quality: "dim", melody: 185.0 },
+    { root: 41.2, quality: "min", melody: 164.81 }
+  ];
+
+  const playNext = () => {
+    if (!state.sound || !audioContext) return;
+    const now = audioContext.currentTime + 0.04;
+    const chord = progression[chordStep % progression.length];
+    playChord(chord.root, chord.quality, now);
+    makeVoice(chord.melody, now + 1.2, 2.2, 0.018, "triangle");
+    makeVoice(chord.melody * 0.75, now + 3.1, 1.6, 0.012, "sine");
+    if (chordStep % 2 === 0) makeBell(chord.melody * 1.5, now + 2.25, 0.022);
+    chordStep += 1;
+  };
+
+  playNext();
+  musicTimer = setInterval(playNext, 4800);
 }
 
 soundToggle.addEventListener("click", () => {
@@ -607,9 +648,13 @@ soundToggle.addEventListener("click", () => {
   soundToggle.setAttribute("aria-label", state.sound ? "Desativar trilha sonora" : "Ativar trilha sonora");
   if (state.sound) {
     startAudio();
-    if (drone) drone.gain.value = 0.035;
+    if (drone && audioContext) {
+      drone.gain.cancelScheduledValues(audioContext.currentTime);
+      drone.gain.setTargetAtTime(0.42, audioContext.currentTime, 0.7);
+    }
   } else if (drone) {
-    drone.gain.value = 0;
+    drone.gain.cancelScheduledValues(audioContext.currentTime);
+    drone.gain.setTargetAtTime(0.0001, audioContext.currentTime, 0.35);
   }
 });
 
